@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/all_services_list_widgets.dart';
 import './widgets/category_chips_widget.dart';
 import './widgets/home_app_bar_widgets.dart';
+import './notifications_screen.dart';
 import './widgets/service_offer_card_widgets.dart';
 
 // TODO: Replace with Riverpod for production state management
@@ -129,7 +129,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
             SliverToBoxAdapter(
               child: HomeAppBarWidget(
                 onNotificationTap: () {
-                  // TODO: Navigate to notifications
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
+                  );
                 },
               ),
             ),

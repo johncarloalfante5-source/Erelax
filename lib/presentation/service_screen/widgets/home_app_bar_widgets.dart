@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_export.dart';
+import '../../../core/auth_store.dart';
 import '../../../theme/app_theme.dart';
 
 class HomeAppBarWidget extends StatelessWidget {
@@ -10,6 +11,14 @@ class HomeAppBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = AuthStore.currentUserName;
+    final initials = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
@@ -25,15 +34,13 @@ class HomeAppBarWidget extends StatelessWidget {
                 width: 2,
               ),
             ),
-            child: ClipOval(
-              child: CustomImageWidget(
-                imageUrl:
-                    'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-                semanticLabel:
-                    'Profile photo of Filipino woman with long dark hair smiling',
+            child: Center(
+              child: Text(
+                initials.isEmpty ? '?' : initials,
+                style: GoogleFonts.dmSans(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -52,7 +59,7 @@ class HomeAppBarWidget extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Hey, Maria 👋',
+                  'Hey, $name 👋',
                   style: GoogleFonts.dmSans(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,

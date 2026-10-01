@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_export.dart';
+import '../../../core/auth_store.dart';
+import '../../../core/booking_store.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/custom_icon_widget.dart';
 
 class AuthPanelWidget extends StatefulWidget {
   final VoidCallback onAuthSuccess;
@@ -70,6 +71,7 @@ class _AuthPanelWidgetState extends State<AuthPanelWidget>
       final password = _signInPasswordController.text;
       final user = _registeredUsers[email];
       if (user != null && user['password'] == password) {
+        AuthStore.setCurrentUser(user);
         widget.onAuthSuccess();
       } else if (user == null) {
         _showError('No account found. Please sign up first.');
@@ -93,12 +95,20 @@ class _AuthPanelWidgetState extends State<AuthPanelWidget>
         _tabController.animateTo(0);
         return;
       }
-      _registeredUsers[email] = {
+      final user = <String, String>{
         'fullName': _fullNameController.text.trim(),
+        'email': email,
         'phone': _phoneController.text.trim(),
         'password': _signUpPasswordController.text,
         'role': 'customer',
       };
+      _registeredUsers[email] = user;
+      AuthStore.setCurrentUser(user);
+      BookingStore.addCustomer(
+        name: user['fullName']!,
+        email: email,
+        phone: user['phone']!,
+      );
       _showSuccess('Account created! Welcome to E-RELAX.');
       widget.onAuthSuccess();
     }
@@ -381,7 +391,7 @@ class _AuthPanelWidgetState extends State<AuthPanelWidget>
                 fontSize: 15,
               ),
               decoration: _fieldDecoration(
-                hint: 'Maria Santos',
+                hint: 'Juan Dela Cruz',
                 prefixIcon: 'person_outline',
               ),
               validator: (v) {

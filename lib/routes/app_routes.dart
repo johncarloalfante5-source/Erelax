@@ -28,7 +28,9 @@ final Map<String, WidgetBuilder> appRoutes = {
   AppRoutes.initial: (_) => const SignUpLoginScreen(),
   AppRoutes.signUpLogin: (_) => const SignUpLoginScreen(),
   AppRoutes.admin: (_) => const AdminLoginScreen(),
-  AppRoutes.adminDashboard: (_) => const AdminDashboardScreen(),
+  AppRoutes.adminDashboard: (_) => AppRoutes.isAdminAuthenticated
+      ? const AdminDashboardScreen()
+      : const AdminLoginScreen(),
   AppRoutes.services: (_) => const AppScaffold(child: ServicesScreen()),
   AppRoutes.booking: (_) => const AppScaffold(child: BookingScreen()),
 };

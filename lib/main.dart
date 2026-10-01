@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import './theme/app_theme.dart';
 import './widgets/custom_error_widget.dart';
-import 'core/app_export.dart';
 import 'routes/app_routes.dart';
 
 void main() async {

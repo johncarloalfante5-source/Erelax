@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
+import '../../core/auth_store.dart';
+import '../../core/booking_time.dart';
 import '../../core/booking_store.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/custom_image_widget.dart';
 import './widget/book_now-bar_widget.dart';
 import './widget/booking_hero_widget.dart';
 import './widget/date_selector_widget.dart';
 import './widget/therapist_header_widget.dart';
-import './widget/time_grid_widget.dart';
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -21,6 +21,7 @@ class BookingScreen extends StatefulWidget {
 class _BookingScreenState extends State<BookingScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _selectedTime;
+  String? _selectedTherapist;
   bool _isBooking = false;
 
   final Map<String, dynamic> _selectedService = {
@@ -31,33 +32,24 @@ class _BookingScreenState extends State<BookingScreen> {
     'therapist': 'Allen Markel',
     'location': 'Gmall Bajada, Davao City',
     'rating': 4.3,
-    'imageUrl':
-        'https://img.rocket.new/generatedImages/rocket_gen_img_1c82a71d2-1774563152133.png',
-    'semanticLabel':
-        'Professional massage therapist performing back massage technique in modern spa',
+    'imageUrl': 'https://img.rocket.new/generatedImages/rocket_gen_img_1c82a71d2-1774563152133.png',
+    'semanticLabel': 'Professional massage therapist performing back massage technique in modern spa',
   };
 
-  final List<String> _availableTimeSlots = [
-    '11:00 AM',
-    '12:00 PM',
-    '1:00 PM',
-    '2:00 PM',
-    '3:00 PM',
-    '4:00 PM',
-    '5:00 PM',
-    '6:00 PM',
-    '7:00 PM',
-    '8:00 PM',
-  ];
-
-  List<String> get _bookedSlots => BookingStore.allBookings
-      .where(
-        (b) =>
-            b['date'] == _formatDateKey(_selectedDate) &&
-            b['status'] != 'Cancelled',
-      )
-      .map((b) => b['time'] as String)
-      .toList();
+  List<String> get _bookedSlots {
+    final therapist = _selectedTherapist;
+    if (therapist == null) return const [];
+    return BookingTime.options
+        .where((time) {
+          return BookingStore.isTimeBooked(
+            date: _selectedDate,
+            therapist: therapist,
+            startTime: time,
+            durationMinutes: _selectedService['durationMinutes'] as int,
+          );
+        })
+        .toList(growable: false);
+  }
 
   String _formatDateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -80,12 +72,202 @@ class _BookingScreenState extends State<BookingScreen> {
     return '${months[_selectedDate.month - 1]} ${_selectedDate.year}';
   }
 
+  List<String> get _availableTherapists =>
+      BookingStore.therapistsAvailableOn(_selectedDate);
+
+  Widget _buildTherapistAndTimes() {
+    final therapists = _availableTherapists;
+    if (therapists.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.warning.withAlpha(20),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.warning.withAlpha(90)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline_rounded, color: AppTheme.warning),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No therapist has been scheduled for this day. Please choose another date.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: AppTheme.onSurfaceDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Choose your preferred therapist',
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.mutedText,
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          initialValue: therapists.contains(_selectedTherapist)
+              ? _selectedTherapist
+              : null,
+          isExpanded: true,
+          dropdownColor: AppTheme.surfaceVariantDark,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppTheme.surfaceVariantDark,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+            ),
+          ),
+          hint: Text(
+            'Select a therapist',
+            style: GoogleFonts.dmSans(color: AppTheme.mutedText),
+          ),
+          items: therapists
+              .map(
+                (therapist) => DropdownMenuItem<String>(
+                  value: therapist,
+                  child: Text(
+                    therapist,
+                    style: GoogleFonts.dmSans(color: AppTheme.onSurfaceDark),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (therapist) =>
+              setState(() => _selectedTherapist = therapist),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Select appointment time',
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.mutedText,
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          initialValue: BookingTime.options.contains(_selectedTime)
+              ? _selectedTime
+              : null,
+          isExpanded: true,
+          dropdownColor: AppTheme.surfaceVariantDark,
+          style: GoogleFonts.dmSans(
+            fontSize: 15,
+            color: AppTheme.onSurfaceDark,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Choose a time',
+            hintStyle: GoogleFonts.dmSans(color: AppTheme.mutedText),
+            helperText: 'Available from 11:00 AM to 8:00 PM',
+            helperStyle: GoogleFonts.dmSans(
+              fontSize: 12,
+              color: AppTheme.mutedText,
+            ),
+            filled: true,
+            fillColor: AppTheme.surfaceVariantDark,
+            prefixIcon: const Icon(
+              Icons.access_time_rounded,
+              color: AppTheme.primary,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
+            ),
+          ),
+          items: BookingTime.options.map((time) {
+            final isBooked = _bookedSlots.contains(time);
+            return DropdownMenuItem<String>(
+              value: time,
+              enabled: !isBooked,
+              child: Text(
+                isBooked ? '$time (Booked)' : time,
+                style: GoogleFonts.dmSans(
+                  color: isBooked ? AppTheme.mutedText : AppTheme.onSurfaceDark,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (time) => setState(() => _selectedTime = time),
+        ),
+      ],
+    );
+  }
+
   Future<void> _handleBookNow() async {
-    if (_selectedTime == null) {
+    if (_availableTherapists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select a time slot to continue.',
+            'No therapist is available on this date. Please choose another day.',
+            style: GoogleFonts.dmSans(color: Colors.white),
+          ),
+          backgroundColor: AppTheme.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedTherapist == null ||
+        !_availableTherapists.contains(_selectedTherapist)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please choose an available therapist to continue.',
+            style: GoogleFonts.dmSans(color: Colors.white),
+          ),
+          backgroundColor: AppTheme.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final timeError = _selectedTime == null
+        ? 'Please select an appointment time.'
+        : BookingTime.validationMessage(
+            _selectedTime!,
+            bookedTimes:
+                BookingStore.isTimeBooked(
+                  date: _selectedDate,
+                  therapist: _selectedTherapist!,
+                  startTime: _selectedTime!,
+                  durationMinutes: _selectedService['durationMinutes'] as int,
+                )
+                ? [_selectedTime!]
+                : const [],
+          );
+    if (timeError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            timeError,
             style: GoogleFonts.dmSans(color: Colors.white),
           ),
           backgroundColor: AppTheme.warning,
@@ -98,7 +280,6 @@ class _BookingScreenState extends State<BookingScreen> {
       );
       return;
     }
-
     setState(() => _isBooking = true);
     await Future<void>.delayed(const Duration(milliseconds: 800));
 
@@ -117,21 +298,33 @@ class _BookingScreenState extends State<BookingScreen> {
         service: _selectedService,
         date: _selectedDate,
         time: _selectedTime!,
+        therapist: _selectedTherapist!,
         onConfirm: () {
           // Save booking to shared store
           final bookingId =
               'BK${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-          BookingStore.addBooking({
-            'id': bookingId,
-            'service': _selectedService['name'],
-            'durationMinutes': _selectedService['durationMinutes'],
-            'price': _selectedService['price'],
-            'therapist': _selectedService['therapist'],
-            'date': _formatDateKey(_selectedDate),
-            'time': _selectedTime,
-            'status': 'Pending',
-            'createdAt': DateTime.now().toIso8601String(),
-          });
+          try {
+            BookingStore.addBooking({
+              'id': bookingId,
+              'serviceId': _selectedService['id'],
+              'service': _selectedService['name'],
+              'durationMinutes': _selectedService['durationMinutes'],
+              'price': _selectedService['price'],
+              'therapist': _selectedTherapist,
+              'therapistPreference': _selectedTherapist,
+              'date': _formatDateKey(_selectedDate),
+              'time': _selectedTime,
+              'status': 'Pending',
+              'customerName': AuthStore.currentUserName,
+              'customerEmail': AuthStore.currentUserEmail,
+              'createdAt': DateTime.now().toIso8601String(),
+            });
+          } on StateError catch (error) {
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(error.message)));
+            return;
+          }
           Navigator.pop(ctx);
           _showSuccessDialog();
         },
@@ -253,7 +446,8 @@ class _BookingScreenState extends State<BookingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               TherapistHeaderWidget(
-                                name: _selectedService['therapist'] as String,
+                                name:
+                                    _selectedTherapist ?? 'Choose a therapist',
                                 location:
                                     _selectedService['location'] as String,
                                 rating: _selectedService['rating'] as double,
@@ -287,26 +481,12 @@ class _BookingScreenState extends State<BookingScreen> {
                                   setState(() {
                                     _selectedDate = d;
                                     _selectedTime = null;
+                                    _selectedTherapist = null;
                                   });
                                 },
                               ),
                               const SizedBox(height: 20),
-                              Text(
-                                'Available Times',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.mutedText,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TimeGridWidget(
-                                timeSlots: _availableTimeSlots,
-                                bookedSlots: _bookedSlots,
-                                selectedTime: _selectedTime,
-                                onTimeSelected: (t) =>
-                                    setState(() => _selectedTime = t),
-                              ),
+                              _buildTherapistAndTimes(),
                               const SizedBox(height: 100),
                             ],
                           ),
@@ -384,7 +564,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TherapistHeaderWidget(
-                        name: _selectedService['therapist'] as String,
+                        name: _selectedTherapist ?? 'Choose a therapist',
                         location: _selectedService['location'] as String,
                         rating: _selectedService['rating'] as double,
                         serviceName: _selectedService['name'] as String,
@@ -413,25 +593,11 @@ class _BookingScreenState extends State<BookingScreen> {
                         onDateSelected: (d) => setState(() {
                           _selectedDate = d;
                           _selectedTime = null;
+                          _selectedTherapist = null;
                         }),
                       ),
                       const SizedBox(height: 20),
-                      Text(
-                        'Available Times',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.mutedText,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TimeGridWidget(
-                        timeSlots: _availableTimeSlots,
-                        bookedSlots: _bookedSlots,
-                        selectedTime: _selectedTime,
-                        onTimeSelected: (t) =>
-                            setState(() => _selectedTime = t),
-                      ),
+                      _buildTherapistAndTimes(),
                       const SizedBox(height: 24),
                       BookNowBarWidget(
                         selectedTime: _selectedTime,
@@ -496,12 +662,14 @@ class _BookingConfirmationSheet extends StatelessWidget {
   final Map<String, dynamic> service;
   final DateTime date;
   final String time;
+  final String therapist;
   final VoidCallback onConfirm;
 
   const _BookingConfirmationSheet({
     required this.service,
     required this.date,
     required this.time,
+    required this.therapist,
     required this.onConfirm,
   });
 
@@ -593,7 +761,7 @@ class _BookingConfirmationSheet extends StatelessWidget {
           _buildSummaryRow('Duration', '$duration minutes'),
           _buildSummaryRow('Date', _formatDate(date)),
           _buildSummaryRow('Time', time),
-          _buildSummaryRow('Therapist', service['therapist'] as String),
+          _buildSummaryRow('Therapist', therapist),
           _buildSummaryRow('Location', service['location'] as String),
           const Divider(color: Color(0xFF3A3A3C), height: 24),
           Row(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_export.dart';
+import '../core/auth_store.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_theme.dart';
 import './custom_icon_widget.dart';
@@ -74,7 +75,11 @@ class _AppNavigationState extends State<AppNavigation>
     final tab = _tabs[visualIndex];
 
     if (tab.route != null) {
-      Navigator.pushReplacementNamed(context, tab.route!);
+      if (tab.route == AppRoutes.signUpLogin && AuthStore.currentUser != null) {
+        _confirmSignOut();
+      } else {
+        Navigator.pushReplacementNamed(context, tab.route!);
+      }
       return;
     }
 
@@ -87,6 +92,31 @@ class _AppNavigationState extends State<AppNavigation>
       context,
       tab.branchIndex == 0 ? AppRoutes.services : AppRoutes.booking,
     );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('Are you sure you want to log out of E-RELAX?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSignOut == true && mounted) {
+      AuthStore.clear();
+      Navigator.pushReplacementNamed(context, AppRoutes.signUpLogin);
+    }
   }
 
   @override
